@@ -281,14 +281,6 @@ int main()
             bool speed_up = true;
 
             double d = 0;
-
-            string best_action = " ";
-
-            
-            if (first_check)
-            {
-                strait = true;
-            }
             
 
             //costs[0] = ((dist_max - current_spacing) / dist_max);
