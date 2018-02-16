@@ -173,7 +173,8 @@ double mphToSpacing(double mph)
 
 double current_spacing = 0;
 bool first_check = true;
-int lane = 2;
+int lane = 1;
+int iteration = 0;
 
 
 int main() 
@@ -266,13 +267,15 @@ int main()
             // INFO: Keeps car in specified lane at 50 mph with no regard to other cars.
 
             double dist_max = mphToSpacing(50);
-            double dist_min = mphToSpacing(30);
+            double dist_min = mphToSpacing(25);
             double static STOP_COST = 0.8;
 
             // Assumes that it's better to navigate to the left. Can be changed.
-            vector<double> costs = {0,0.3,0.5};
+            vector<double> costs = {0,0.3,0.3};
 
             int best_index;
+
+            int new_d;
 
 
             bool strait = false;
@@ -293,21 +296,21 @@ int main()
               lanes_to_check.resize(1);
               lanes_to_check[0] = (1);
               costs[1] = (1);
-              d = ((2+4) * lane) + 2;
+              //d = ((2+4) * lane) + 2;
             }
             else if (lane == 1)
             {
               lanes_to_check.resize(2);
               lanes_to_check[0] = (0);
               lanes_to_check[1] = (2);
-              d = ((2+4) * lane);
+              //d = ((2+4) * lane);
             }
             else if (lane == 2)
             {
               lanes_to_check.resize(1);
               lanes_to_check[0] = (1);
               costs[2] = (1);
-              d = ((2+4) * lane) - 2;
+              //d = ((2+4) * lane) - 2;
             }
 
             for (int n = 0; n < sensor_fusion.size(); n++)
@@ -322,12 +325,14 @@ int main()
                   {
                     double s_to_check = sensor_fusion[n][5];
 
-                    if ((abs(s_to_check - car_s)) < 10)
+                    // Measures if a car is further in front than in rear to prevent 
+                    if (s_to_check > car_s && (s_to_check - car_s) < 20 || s_to_check < car_s && abs((s_to_check - car_s)) < 10)
                     {
-
-                      costs[i + 1] = (1);
-
-                      if (lanes_to_check[i] = 1)
+                      if (lanes_to_check.size() == 2)
+                      {
+                        costs[i + 1] = (1);
+                      }
+                      else if (lanes_to_check[i] = 1)
                       {
                         costs[2] = (1);
                       }
@@ -370,24 +375,49 @@ int main()
               }
             }
 
+            best_index = min_pos;
+
             cout << "Costs:" << costs[0] << " : " << costs[1] << " : " << costs[2] << endl;
 
+            cout << "Best index: " << best_index << endl;
 
-            // if (best_index == 1)
-            // {
-            //   lane--;
-            // }
-            // else if (best_index == 2)
-            // {
-            //   lane++;
-            // }
+
+            iteration++;
+
+            if (iteration > 50)
+            {
+              if (best_index == 1)
+              {
+                lane--;
+                iteration = 0;
+              }
+              else if (best_index == 2)
+              {
+                lane++;
+                iteration = 0;
+              }
+            }
+
+            if (lane == 0)
+            {
+              new_d = ((2+4) * lane) + 2;
+            }
+            else if (lane == 1)
+            {
+              new_d = ((2+4) * lane);
+            }
+            else if (lane == 2)
+            {
+              new_d = ((2+4) * lane) - 2;
+            }
+
 
             for(int i = 0; i < 50; i++)
             {
 
               if (speed_up)
               {
-                current_spacing += (0.002 / 50);
+                current_spacing += (0.006 / 50);
                 
                 if (current_spacing > dist_max)
                 {
@@ -396,14 +426,20 @@ int main()
               }
               else
               {
-                current_spacing -= (0.002 / 50);
+                current_spacing -= (0.0015 / 50);
+
+                if (current_spacing < dist_min)
+                {
+                   current_spacing = dist_min;
+                }
+
               }
 
               double s = car_s + (i + 1) * current_spacing;
 
               //double d = ((2+4) * lane) - 2;
 
-              vector<double> next_xy = getXY(s,d,map_waypoints_s,map_waypoints_x,map_waypoints_y);
+              vector<double> next_xy = getXY(s,new_d,map_waypoints_s,map_waypoints_x,map_waypoints_y);
 
               next_x_vals.push_back(next_xy[0]);
               next_y_vals.push_back(next_xy[1]);
