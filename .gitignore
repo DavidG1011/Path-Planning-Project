@@ -1,2 +1,7 @@
+<<<<<<< Updated upstream
 cmake-build-debug/
 build/
+=======
+build/
+cmake-build-debug/
+>>>>>>> Stashed changes
