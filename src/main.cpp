@@ -180,10 +180,12 @@ double speedToSpacing(double speed, bool in_meters)
 }
 
 
-double current_spacing = 0;
+double current_spacing = 0.0;
 bool first_check = true;
 int lane = 1;
 int iteration = 0;
+double current_speed = 0;
+bool starting = true;
 
 
 int main() 
@@ -263,40 +265,33 @@ int main()
             double end_path_d = j[1]["end_path_d"];
 
             // Store size of previous path. (Assumes x size == y size)
-            int size_prev previous_path_x.size();
+            int size_prev = previous_path_x.size();
+
+
+            // Check if there is a previous path to base car s on.
+            if (size_prev > 0)
+            {
+              car_s = end_path_s;
+            }
 
             // Sensor Fusion Data, a list of all other cars on the same side of the road.
             auto sensor_fusion = j[1]["sensor_fusion"];
 
             json msgJson;
 
-            // TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
-
-            vector<double> next_x_vals;
-            vector<double> next_y_vals;
-
-
-            // INFO: Keeps car in specified lane at 50 mph with no regard to other cars.
-
             bool debug = true;
 
+            
+            double current_desired_speed = 49.5;
+            double absolute_max_speed = 49.5;
 
-            double dist_max = speedToSpacing(50, false);
-            double dist_min = speedToSpacing(25, false);
-            double static STOP_COST = 0.8;
-
-            // Assumes that it's better to navigate to the left. Can be changed.
-            vector<double> costs = {0,0.15,0.15};
+            // Assumes equal default cost for lane changes. Could be changed to favor left passing for legality sake.
+            vector<double> costs = {0,0.14,0.14};
 
             int best_index;
 
-            int new_d;
-
-
-            bool strait = false;
-            bool left = false;
-            bool right = false;
             bool speed_up = true;
+            bool car_close = false;
 
             double d = 0;
             
@@ -370,15 +365,35 @@ int main()
               double shift_x = spl_x[n] - ref_x;
               double shift_y = spl_y[n] - ref_y;
 
-              spl_x = (shift_x * cos(0 - ref_yaw) - shift_y * sin(0 - ref_yaw));
-              spl_y = (shift_x * sin(0 - ref_yaw) + shift_y * cos(0 - ref_yaw));
+              spl_x[n] = (shift_x * cos(0 - ref_yaw) - shift_y * sin(0 - ref_yaw));
+              spl_y[n] = (shift_x * sin(0 - ref_yaw) + shift_y * cos(0 - ref_yaw));
             }
 
             // Initialize spline.
-            tk::spline s;
+            tk::spline spl;
 
-            // TODO: 30:51: Implement spline and get working with current frame.
+            // Pass desired spline x,y points to the spline function.
+            spl.set_points(spl_x, spl_y);
 
+
+            // Declare next x,y points that will be passed to the planner.
+            vector<double> next_x_vals;
+            vector<double> next_y_vals;
+
+
+            // Push back previous path points onto next x,y value vectors.
+            for (int n = 0; n < previous_path_x.size(); n++)
+            { 
+              next_x_vals.push_back(previous_path_x[n]);
+              next_y_vals.push_back(previous_path_y[n]);
+            }
+
+
+            // Calculate 30 meter way-points to use for moving at desired speed
+            double waypoint_x = 30.0;
+            double waypoint_y = spl(waypoint_x);
+            double waypoint_dist = sqrt((waypoint_x) * (waypoint_x) + (waypoint_y) * (waypoint_y));
+            double x_add_on = 0;
 
 
             vector<double> lanes_to_check = {0};
@@ -412,20 +427,24 @@ int main()
 
                   if (d < (2+4*lanes_to_check[i]+2) && d > (2+4*lanes_to_check[i]-2))
                   {
+                    double vx = sensor_fusion[n][3];
+                    double vy = sensor_fusion[n][4];
+                    double other_car_speed = sqrt(vx*vx+vy*vy);
                     double s_to_check = sensor_fusion[n][5];
-
+                    s_to_check += ((double)size_prev*.02*other_car_speed);
+                    
                     // Measures if a car is close in other lane. Forward facing and rear distance are set independently. 
-                    if (s_to_check > car_s && (s_to_check - car_s) < 20 || s_to_check < car_s && (car_s - s_to_check) < 10)
+                    if (s_to_check > car_s && (s_to_check - car_s) < 20 || s_to_check < car_s && (car_s - s_to_check) < 9)
                     {
                       if (lanes_to_check.size() == 2)
                       {
                         costs[i + 1] = (1);
                       }
-                      else if (lanes_to_check[i] = 1)
+                      else if (lanes_to_check[i] = 1 && lane == 0)
                       {
                         costs[2] = (1);
                       }
-                      else if (lanes_to_check[i] = 2)
+                      else if (lanes_to_check[i] = 1 && lane == 2)
                       { 
                         costs[1] = (1);
                       }
@@ -441,22 +460,34 @@ int main()
 
               if (d < (2+4*lane+2) && d > (2+4*lane-2))
               {
-                
+                double vx = sensor_fusion[n][3];
+                double vy = sensor_fusion[n][4];
+                double other_car_speed = sqrt(vx*vx+vy*vy);
                 double other_car_s = sensor_fusion[n][5];
+                other_car_s += ((double)size_prev*.02*other_car_speed);
 
-                if (other_car_s > car_s && (other_car_s - car_s) <= 15)
+                if (other_car_s > car_s && (other_car_s - car_s) <= 19)
                 {
-                  double vx = sensor_fusion[n][3];
-                  double vy = sensor_fusion[n][4];
-                  double other_car_speed = sqrt(vx*vx+vy+vy);
-                  speed_up = false;
-                  dist_min = speedToSpacing(other_car_speed, true);
+                  car_close = true;
+                  current_desired_speed = ((other_car_speed) * 2.2369);
                 }
 
               }
             }
 
-            costs[0] = 0.8 * ((dist_max - current_spacing) / dist_max);
+            if (starting)
+            {
+              costs[0] = 0.0;
+
+              if (current_speed > 45)
+              {
+                starting = false;
+              }
+            }
+            else
+            {
+              costs[0] = ((49.5 - current_speed) / 49.5);
+            }
 
             int min_pos = 0;
 
@@ -490,6 +521,7 @@ int main()
 
             iteration++;
 
+            // Hold for 50 iterations to prevent rapid lane changing.
             if (iteration > 50)
             {
               if (best_index == 1)
@@ -504,103 +536,52 @@ int main()
               }
             }
 
-            if (lane == 0)
-            {
-              new_d = ((2+4) * lane) + 2;
-            }
-            else if (lane == 1)
-            {
-              new_d = ((2+4) * lane);
-            }
-            else if (lane == 2)
-            {
-              new_d = ((2+4) * lane) - 2;
-            }
 
-
-            for(int i = 0; i < 50; i++)
+            if (car_close)
             {
-
-              if (speed_up)
+              current_speed -= 1;
+              if (current_speed < desired_speed)
               {
-                current_spacing += (0.006 / 50);
-                
-                if (current_spacing > dist_max)
-                {
-                   current_spacing = dist_max;
-                }
+                current_speed = desired_speed;
               }
-              else
+            }
+            else if (current_speed < 49.5)
+            {
+              current_speed += 0.5;
+
+              if (current_speed > 49.5)
               {
-                current_spacing -= (0.004 / 50);
-
-                if (current_spacing < dist_min)
-                {
-                   current_spacing = dist_min;
-                }
-
+                current_speed = 49.5;
               }
-
-              double s = car_s + (i + 1) * current_spacing;
-
-              //double d = ((2+4) * lane) - 2;
-
-              vector<double> next_xy = getXY(s,new_d,map_waypoints_s,map_waypoints_x,map_waypoints_y);
-
-              next_x_vals.push_back(next_xy[0]);
-              next_y_vals.push_back(next_xy[1]);
-
             }
 
 
-            // costs[0] = ((dist_max - current_spacing) / dist_max);
+            for(int i = 1; i <= 50 - previous_path_x.size(); i++)
+            {
 
+              // Calculate way-point distance needed to travel at desired speed.
+              double N = (waypoint_dist/(.02*current_speed/2.2369));
+              double x_point = x_add_on+(waypoint_x)/N;
+              double y_point = spl(x_point);
 
-            // vector<double> lanes_to_check = {0,0};
+              x_add_on = x_point;
 
-            // if (lane == 0)
-            // {
-            //   lanes_to_check.resize(1);
-            //   lanes_to_check[0] = (1);
-            // }
-            // else if (lane == 1)
-            // {
-            //   lanes_to_check.resize(2);
-            //   lanes_to_check[0] = (0);
-            //   lanes_to_check[1] = (2);
-            // }
-            // else if (lane == 2)
-            // {
-            //   lanes_to_check.resize(1);
-            //   lanes_to_check[0] = (1);
-            // }
+              // Set reference x,y points
+              double x_ref = x_point;
+              double y_ref = y_point;
 
+              // Change coordinate points back to global perspective after changing them earlier.
+              x_point = (x_ref * cos(ref_yaw) - y_ref * sin(ref_yaw));
+              y_point = (x_ref * sin(ref_yaw) + y_ref * cos(ref_yaw));
 
-            // for (int n = 0; n < sensor_fusion.size(); n++)
-            // {
-              
-            //     float d = sensor_fusion[n][6];
+              x_point += ref_x;
+              y_point += ref_y;
 
-            //     for (int i = 0; i < lanes_to_check.size(); i++)
-            //     {
-            //       if (d < (2+4*lanes_to_check[i]+2) && d > (2+4*lanes_to_check[i]-2))
-            //       {
-            //         double s_to_check = sensor_fusion[n][5];
+              // Push back final x,y values to the simulation. 
+              next_x_vals.push_back(x_point);
+              next_y_vals.push_back(y_point);
 
-            //         if ((abs(s_to_check - car_s)) < 15)
-            //         {
-            //           costs[i + 1] = 1.0;
-            //         }
-            //       }
-            //     }
-            // }
-
-            // cout << costs[0] << " : " << costs[1] << " : " << costs [2] << endl;
-
-
-            //TODO: Define cost functions for road actions.
-            // 1. Work on measuring cost of slowing down behind car vs changing lane. 
-
+            }
 
             msgJson["next_x"] = next_x_vals;
             msgJson["next_y"] = next_y_vals;
