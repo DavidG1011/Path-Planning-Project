@@ -279,21 +279,39 @@ int main()
 
             json msgJson;
 
+            // ############################################ Tunable parameters ##################################################
+            
+            // Toggle whether or not to output cost and best action data to terminal.
             bool debug = true;
 
-            
-            double current_desired_speed = 49.5;
+            // Max speed car can travel at.
             double absolute_max_speed = 49.5;
 
             // Assumes equal default cost for lane changes. Could be changed to favor left passing for legality sake.
-            vector<double> costs = {0,0.14,0.14};
+            vector<double> costs = {0,0.15,0.15};
+
+            // Car ahead and behind detection distance for other lanes. 
+            double forward_distance = 20;
+            double rear_distance = 9;
+
+            // Car in same lane detection distance.
+            double same_lane_distance = 19;
+
+            // Control how fast the ego car accelerates/decelerates.
+            double accel_inc = 0.4;
+            double decel_inc = 1.0;
+
+            // Set how far apart way-points are for the spline function.
+            double spl_waypoint_distance = 25.0;
+            // ##################################################################################################################
+
+
+            double current_desired_speed = 49.5;
 
             int best_index;
 
             bool speed_up = true;
             bool car_close = false;
-
-            double d = 0;
             
 
             // Initialize x and y vectors to be used for spline calculation. 
@@ -345,9 +363,9 @@ int main()
 
 
             // Calculate future waypoints from 30m - 90m.
-            vector <double> waypoints0 = getXY(car_s + 30, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-            vector <double> waypoints1 = getXY(car_s + 60, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-            vector <double> waypoints2 = getXY(car_s + 90, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+            vector <double> waypoints0 = getXY(car_s + spl_waypoint_distance,     (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+            vector <double> waypoints1 = getXY(car_s + spl_waypoint_distance * 2, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+            vector <double> waypoints2 = getXY(car_s + spl_waypoint_distance * 3, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
 
             // Push back waypoints onto spline vector.
             spl_x.push_back(waypoints0[0]);
@@ -390,7 +408,7 @@ int main()
 
 
             // Calculate 30 meter way-points to use for moving at desired speed
-            double waypoint_x = 30.0;
+            double waypoint_x = 30;
             double waypoint_y = spl(waypoint_x);
             double waypoint_dist = sqrt((waypoint_x) * (waypoint_x) + (waypoint_y) * (waypoint_y));
             double x_add_on = 0;
@@ -434,7 +452,7 @@ int main()
                     s_to_check += ((double)size_prev*.02*other_car_speed);
                     
                     // Measures if a car is close in other lane. Forward facing and rear distance are set independently. 
-                    if (s_to_check > car_s && (s_to_check - car_s) < 20 || s_to_check < car_s && (car_s - s_to_check) < 9)
+                    if (s_to_check > car_s && (s_to_check - car_s) < forward_distance || s_to_check < car_s && (car_s - s_to_check) < rear_distance)
                     {
                       if (lanes_to_check.size() == 2)
                       {
@@ -466,7 +484,7 @@ int main()
                 double other_car_s = sensor_fusion[n][5];
                 other_car_s += ((double)size_prev*.02*other_car_speed);
 
-                if (other_car_s > car_s && (other_car_s - car_s) <= 19)
+                if (other_car_s > car_s && (other_car_s - car_s) <= same_lane_distance)
                 {
                   car_close = true;
                   current_desired_speed = ((other_car_speed) * 2.2369);
@@ -479,14 +497,15 @@ int main()
             {
               costs[0] = 0.0;
 
-              if (current_speed > 45)
+              if (current_speed > 40)
               {
                 starting = false;
               }
             }
+
             else
             {
-              costs[0] = ((49.5 - current_speed) / 49.5);
+              costs[0] = ((absolute_max_speed - current_speed) / absolute_max_speed);
             }
 
             int min_pos = 0;
@@ -539,19 +558,19 @@ int main()
 
             if (car_close)
             {
-              current_speed -= 1;
-              if (current_speed < desired_speed)
+              current_speed -= decel_inc;
+              if (current_speed < current_desired_speed)
               {
-                current_speed = desired_speed;
+                current_speed = current_desired_speed;
               }
             }
-            else if (current_speed < 49.5)
+            else if (current_speed < absolute_max_speed)
             {
-              current_speed += 0.5;
+              current_speed += accel_inc;
 
-              if (current_speed > 49.5)
+              if (current_speed > absolute_max_speed)
               {
-                current_speed = 49.5;
+                current_speed = absolute_max_speed;
               }
             }
 
