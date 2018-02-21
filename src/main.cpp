@@ -10,6 +10,7 @@
 #include "json.hpp"
 #include <string>
 #include "spline.h"
+#include <limits>
 
 using namespace std;
 
@@ -255,7 +256,6 @@ int main()
             double car_yaw = j[1]["yaw"];
             double car_speed = j[1]["speed"];
 
-
             // Previous path data given to the Planner
             auto previous_path_x = j[1]["previous_path_x"];
             auto previous_path_y = j[1]["previous_path_y"];
@@ -279,7 +279,7 @@ int main()
 
             json msgJson;
 
-            // ############################################ Tunable parameters ##################################################
+            //############################################ Tunable parameters ##################################################
             
             // Toggle whether or not to output cost and best action data to terminal.
             bool debug = true;
@@ -291,27 +291,39 @@ int main()
             vector<double> costs = {0,0.15,0.15};
 
             // Car ahead and behind detection distance for other lanes. 
-            double forward_distance = 20;
-            double rear_distance = 9;
+            double forward_distance = 21;
+            double rear_distance = 8;
+
+            //*******************************************************
+            //**  Make sure forward_distance > same_lane_distance. **
+            //*******************************************************
 
             // Car in same lane detection distance.
-            double same_lane_distance = 19;
+            double same_lane_distance = 18;
 
             // Control how fast the ego car accelerates/decelerates.
-            double accel_inc = 0.4;
+            double accel_inc = 0.35;
             double decel_inc = 1.0;
 
-            // Set how far apart way-points are for the spline function.
+            // Set how far apart way-points are for the spline function. Higher = smoother lines.
             double spl_waypoint_distance = 25.0;
-            // ##################################################################################################################
+
+            // Prevents ego car from accelerating if the acceleration would hit another car. Greater than this value = safe.
+            double safe_to_accel = 14;
+
+            // Prevents ego car from clipping other cars during lane changing. Greater than this value = safe.
+            double safe_to_change = 14;
+            //##################################################################################################################
 
 
-            double current_desired_speed = 49.5;
+            double current_desired_speed = absolute_max_speed;
 
             int best_index;
 
             bool speed_up = true;
             bool car_close = false;
+
+            double s_to_compare = numeric_limits<double>::max();
             
 
             // Initialize x and y vectors to be used for spline calculation. 
@@ -452,7 +464,7 @@ int main()
                     s_to_check += ((double)size_prev*.02*other_car_speed);
                     
                     // Measures if a car is close in other lane. Forward facing and rear distance are set independently. 
-                    if (s_to_check > car_s && (s_to_check - car_s) < forward_distance || s_to_check < car_s && (car_s - s_to_check) < rear_distance)
+                    if (s_to_check > car_s && (s_to_check - car_s) <= forward_distance || s_to_check < car_s && (car_s - s_to_check) <= rear_distance)
                     {
                       if (lanes_to_check.size() == 2)
                       {
@@ -471,6 +483,7 @@ int main()
                 }
             }
 
+
             for (int n = 0; n < sensor_fusion.size(); n++)
             {
             
@@ -486,27 +499,29 @@ int main()
 
                 if (other_car_s > car_s && (other_car_s - car_s) <= same_lane_distance)
                 {
-                  car_close = true;
-                  current_desired_speed = ((other_car_speed) * 2.2369);
+                  //car_close = true;
+                  current_desired_speed = ((other_car_speed * 2.2369) - 0.5);
+                  s_to_compare = other_car_s;
                 }
 
               }
             }
 
+
             if (starting)
             {
               costs[0] = 0.0;
 
-              if (current_speed > 40)
+              if (current_speed > 45)
               {
                 starting = false;
               }
             }
-
             else
             {
               costs[0] = ((absolute_max_speed - current_speed) / absolute_max_speed);
             }
+
 
             int min_pos = 0;
 
@@ -518,7 +533,9 @@ int main()
               }
             }
 
+
             best_index = min_pos;
+
 
             if (debug)
             {
@@ -538,35 +555,48 @@ int main()
               }
             }
 
+
             iteration++;
+
 
             // Hold for 50 iterations to prevent rapid lane changing.
             if (iteration > 50)
             {
               if (best_index == 1)
               {
-                lane--;
-                iteration = 0;
+                if ((s_to_compare - car_s) >= safe_to_change)
+                {
+                  lane--;
+                  iteration = 0;
+                }
               }
               else if (best_index == 2)
               {
-                lane++;
-                iteration = 0;
+                if ((s_to_compare - car_s) >= safe_to_change)
+                {
+                  lane++;
+                  iteration = 0;
+                }
               }
             }
 
 
-            if (car_close)
+            if (current_speed > current_desired_speed)
             {
               current_speed -= decel_inc;
+
               if (current_speed < current_desired_speed)
               {
                 current_speed = current_desired_speed;
               }
             }
-            else if (current_speed < absolute_max_speed)
+            else if (current_speed < current_desired_speed)
             {
-              current_speed += accel_inc;
+
+              if ((s_to_compare - car_s) >= safe_to_accel)
+              {
+                current_speed += accel_inc;
+              } 
 
               if (current_speed > absolute_max_speed)
               {
