@@ -170,23 +170,24 @@ vector<double> getXY(double s, double d, const vector<double> &maps_s, const vec
 
 }
 
-double speedToSpacing(double speed, bool in_meters)
-{
-  if (in_meters)
-  {
-    speed *= 2.2369;
-  }
+// double speedToSpacing(double speed, bool in_meters)
+// {
+//   if (in_meters)
+//   {
+//     speed *= 2.2369;
+//   }
 
-  return (speed * 0.44704) / 50;
-}
+//   return (speed * 0.44704) / 50;
+// }
 
 
-double current_spacing = 0.0;
-bool first_check = true;
+// double current_spacing = 0.0;
+// bool first_check = true;
 int lane = 1;
-int iteration = 0;
+// int iteration = 0;
 double current_speed = 0;
-bool starting = true;
+// bool starting = true;
+// vector<double> costs = {0,0.0,0.0};
 
 
 int main() 
@@ -288,7 +289,7 @@ int main()
             double absolute_max_speed = 49.5;
 
             // Assumes equal default cost for lane changes. Could be changed to favor left passing for legality sake.
-            vector<double> costs = {0,0.15,0.15};
+            vector<double> costs = {0,0.12,0.12};
 
             // Car ahead and behind detection distance for other lanes. 
             double forward_distance = 21;
@@ -306,13 +307,16 @@ int main()
             double decel_inc = 1.0;
 
             // Set how far apart way-points are for the spline function. Higher = smoother lines.
-            double spl_waypoint_distance = 25.0;
+            double spl_waypoint_distance = 28.0;
 
-            // Prevents ego car from accelerating if the acceleration would hit another car. Greater than this value = safe.
-            double safe_to_accel = 14;
+            // Prevents ego car from accelerating if the acceleration would hit another car. 
+            // Distance to car greater than this value = safe.
+            double safe_to_accel = 13;
 
-            // Prevents ego car from clipping other cars during lane changing. Greater than this value = safe.
+            // Prevents ego car from clipping other cars during lane changing. 
+            // Distance to car greater than this value = safe.
             double safe_to_change = 14;
+
             //##################################################################################################################
 
 
@@ -464,7 +468,8 @@ int main()
                     s_to_check += ((double)size_prev*.02*other_car_speed);
                     
                     // Measures if a car is close in other lane. Forward facing and rear distance are set independently. 
-                    if (s_to_check > car_s && (s_to_check - car_s) <= forward_distance || s_to_check < car_s && (car_s - s_to_check) <= rear_distance)
+                    if (s_to_check > car_s && (s_to_check - car_s) <= forward_distance \
+                        || s_to_check < car_s && (car_s - s_to_check) <= rear_distance)
                     {
                       if (lanes_to_check.size() == 2)
                       {
@@ -508,79 +513,6 @@ int main()
             }
 
 
-            if (starting)
-            {
-              costs[0] = 0.0;
-
-              if (current_speed > 45)
-              {
-                starting = false;
-              }
-            }
-            else
-            {
-              costs[0] = ((absolute_max_speed - current_speed) / absolute_max_speed);
-            }
-
-
-            int min_pos = 0;
-
-            for (int n = 0; n < 3; ++n)
-            {
-              if (costs[n] < costs[min_pos])
-              {
-                  min_pos = n;
-              }
-            }
-
-
-            best_index = min_pos;
-
-
-            if (debug)
-            {
-              cout << "Costs: " << costs[0] << " : " << costs[1] << " : " << costs[2] << endl;
-
-              if (best_index == 0)
-              {
-                cout << "Best Action: Stay in lane." << endl;
-              }
-              else if (best_index == 1)
-              {
-                cout << "Best Action: Change to left." << endl;
-              }
-              else if (best_index == 2)
-              {
-                cout << "Best Action: Change to right." << endl;
-              }
-            }
-
-
-            iteration++;
-
-
-            // Hold for 50 iterations to prevent rapid lane changing.
-            if (iteration > 50)
-            {
-              if (best_index == 1)
-              {
-                if ((s_to_compare - car_s) >= safe_to_change)
-                {
-                  lane--;
-                  iteration = 0;
-                }
-              }
-              else if (best_index == 2)
-              {
-                if ((s_to_compare - car_s) >= safe_to_change)
-                {
-                  lane++;
-                  iteration = 0;
-                }
-              }
-            }
-
-
             if (current_speed > current_desired_speed)
             {
               current_speed -= decel_inc;
@@ -589,6 +521,8 @@ int main()
               {
                 current_speed = current_desired_speed;
               }
+
+              costs[0] = ((absolute_max_speed - current_speed) / absolute_max_speed);
             }
             else if (current_speed < current_desired_speed)
             {
@@ -603,6 +537,135 @@ int main()
                 current_speed = absolute_max_speed;
               }
             }
+
+
+            // if (starting)
+            // {
+            //   costs[0] = 0.0;
+
+            //   if (current_speed > 45)
+            //   { // if (starting)
+            // {
+            //   costs[0] = 0.0;
+
+            //   if (current_speed > 45)
+            //   {
+            //     starting = false;
+            //   }
+            // }
+            // else
+            // {
+            //   costs[0] = ((absolute_max_speed - current_speed) / absolute_max_speed);
+            // }
+            //     starting = false;
+            //   }
+            // }
+            // else
+            // {
+            //   costs[0] = ((absolute_max_speed - current_speed) / absolute_max_speed);
+            // }
+            
+
+            int min_pos = 0;
+
+            for (int n = 0; n < 3; ++n)
+            {
+              if (costs[n] < costs[min_pos])
+              {
+                  min_pos = n;
+              }
+            }
+
+            best_index = min_pos;
+
+
+            if (debug)
+            {
+
+              cout << "Costs" << endl << "Stay: " << costs[0] << endl << "Left Change:  "<< costs[1] << endl \
+                   << "Right Change: " << costs[2] << endl;
+
+              if (best_index == 0)
+              {
+                cout << "Lowest Cost: Stay in lane" << endl;
+              }
+              else if (best_index == 1)
+              {
+                cout << "Lowest Cost: Change to left <---- " << endl;
+              }
+              else if (best_index == 2)
+              {
+                cout << "Lowest Cost: Change to right ----> " << endl;
+              }
+
+              cout << endl;
+            }
+
+
+            // iteration++;
+
+
+            // Hold for 50 iterations to prevent rapid lane changing.
+            // if (iteration > 50)
+            // {
+            //   if (best_index == 1)
+            //   {
+            //     if ((s_to_compare - car_s) >= safe_to_change)
+            //     {
+            //       lane--;
+            //       iteration = 0;
+            //     }
+            //   }
+            //   else if (best_index == 2)
+            //   {
+            //     if ((s_to_compare - car_s) >= safe_to_change)
+            //     {
+            //       lane++;
+            //       iteration = 0;
+            //     }
+            //   }
+            // }
+
+            if (best_index == 1)
+            {
+              if ((s_to_compare - car_s) >= safe_to_change)
+              {
+                lane--;
+                //iteration = 0;
+              }
+            }
+            else if (best_index == 2)
+            {
+              if ((s_to_compare - car_s) >= safe_to_change)
+              {
+                lane++;
+                //iteration = 0;
+              }
+            }
+
+
+            // if (current_speed > current_desired_speed)
+            // {
+            //   current_speed -= decel_inc;
+
+            //   if (current_speed < current_desired_speed)
+            //   {
+            //     current_speed = current_desired_speed;
+            //   }
+            // }
+            // else if (current_speed < current_desired_speed)
+            // {
+
+            //   if ((s_to_compare - car_s) >= safe_to_accel)
+            //   {
+            //     current_speed += accel_inc;
+            //   } 
+
+            //   if (current_speed > absolute_max_speed)
+            //   {
+            //     current_speed = absolute_max_speed;
+            //   }
+            // }
 
 
             for(int i = 1; i <= 50 - previous_path_x.size(); i++)
