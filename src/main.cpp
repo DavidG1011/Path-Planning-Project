@@ -170,25 +170,8 @@ vector<double> getXY(double s, double d, const vector<double> &maps_s, const vec
 
 }
 
-// double speedToSpacing(double speed, bool in_meters)
-// {
-//   if (in_meters)
-//   {
-//     speed *= 2.2369;
-//   }
-
-//   return (speed * 0.44704) / 50;
-// }
-
-
-// double current_spacing = 0.0;
-// bool first_check = true;
 int lane = 1;
-// int iteration = 0;
 double current_speed = 0;
-// bool starting = true;
-// vector<double> costs = {0,0.0,0.0};
-
 
 int main() 
 {
@@ -291,8 +274,9 @@ int main()
             // Assumes equal default cost for lane changes. Could be changed to favor left passing for legality sake.
             vector<double> costs = {0,0.12,0.12};
 
-            // Car ahead and behind detection distance for other lanes. 
-            double forward_distance = 21;
+            // Car ahead and behind detection distance for other lanes.
+            double forward_distance = 25;
+            // double forward_distance = 50;
             double rear_distance = 8;
 
             //*******************************************************
@@ -467,27 +451,28 @@ int main()
                     double s_to_check = sensor_fusion[n][5];
                     s_to_check += ((double)size_prev*.02*other_car_speed);
                     
-                    // Measures if a car is close in other lane. Forward facing and rear distance are set independently. 
-                    if (s_to_check > car_s && (s_to_check - car_s) <= forward_distance \
+                    //Measures if a car is close in other lane. Forward facing and rear distance are set independently. 
+                    if (s_to_check > car_s && (s_to_check - car_s) <= forward_distance 
                         || s_to_check < car_s && (car_s - s_to_check) <= rear_distance)
                     {
-                      if (lanes_to_check.size() == 2)
-                      {
-                        costs[i + 1] = (1);
-                      }
-                      else if (lanes_to_check[i] = 1 && lane == 0)
-                      {
-                        costs[2] = (1);
-                      }
-                      else if (lanes_to_check[i] = 1 && lane == 2)
-                      { 
-                        costs[1] = (1);
-                      }
+                        if (lanes_to_check.size() == 2)
+                        { 
+                          //costs[i + 1] = ((forward_distance - (s_to_check - car_s)) / forward_distance);
+                          costs[i + 1] = (1);
+                        }
+                        else if (lanes_to_check[i] = 1 && lane == 0)
+                        {
+                          costs[2] = (1);
+                        }
+                        else if (lanes_to_check[i] = 1 && lane == 2)
+                        { 
+                          costs[1] = (1);
+                        }
                     }
+                    
                   }
-                }
+                } 
             }
-
 
             for (int n = 0; n < sensor_fusion.size(); n++)
             {
