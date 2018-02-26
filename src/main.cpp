@@ -275,23 +275,22 @@ int main()
             vector<double> costs = {0,0.12,0.12};
 
             // Car ahead and behind detection distance for other lanes.
-            double forward_distance = 25;
-            // double forward_distance = 50;
-            double rear_distance = 8;
+            double forward_distance = 22.0;
+            double rear_distance = 8.0;
 
             //*******************************************************
             //**  Make sure forward_distance > same_lane_distance. **
             //*******************************************************
 
             // Car in same lane detection distance.
-            double same_lane_distance = 18;
+            double same_lane_distance = 18.0;
 
             // Control how fast the ego car accelerates/decelerates.
             double accel_inc = 0.35;
             double decel_inc = 1.0;
 
             // Set how far apart way-points are for the spline function. Higher = smoother lines.
-            double spl_waypoint_distance = 28.0;
+            double spl_waypoint_distance = 32.0;
 
             // Prevents ego car from accelerating if the acceleration would hit another car. 
             // Distance to car greater than this value = safe.
@@ -303,7 +302,7 @@ int main()
 
             //##################################################################################################################
 
-
+            // Initialize current desired speed to the max desired. 
             double current_desired_speed = absolute_max_speed;
 
             int best_index;
@@ -311,7 +310,9 @@ int main()
             bool speed_up = true;
             bool car_close = false;
 
+            // Initialize min function variables to highest possible.
             double s_to_compare = numeric_limits<double>::max();
+            vector <double> nearest_s = {numeric_limits<double>::max(),numeric_limits<double>::max()};
             
 
             // Initialize x and y vectors to be used for spline calculation. 
@@ -326,12 +327,9 @@ int main()
             double ref_yaw = deg2rad(car_yaw);
 
 
-            // Decide whether to use car or previous path end point as starting reference point.
-
             // If size of previous is less than 2, use car as starting point.
             if (size_prev < 2)
             {
-
               // Calculate points tangent to car.
               double prev_x = car_x - cos(car_yaw);
               double prev_y = car_y - sin(car_yaw);
@@ -362,7 +360,7 @@ int main()
             }
 
 
-            // Calculate future waypoints from 30m - 90m.
+            // Calculate future waypoints for spline.
             vector <double> waypoints0 = getXY(car_s + spl_waypoint_distance,     (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
             vector <double> waypoints1 = getXY(car_s + spl_waypoint_distance * 2, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
             vector <double> waypoints2 = getXY(car_s + spl_waypoint_distance * 3, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
@@ -377,12 +375,13 @@ int main()
             spl_y.push_back(waypoints2[1]);
 
 
-            // Loop over points in spline vector and shift coordinate reference from global to local (car) coordinates.
+            // Loop over points in spline vector. 
             for (int n = 0; n < spl_x.size(); n++)
             {
               double shift_x = spl_x[n] - ref_x;
               double shift_y = spl_y[n] - ref_y;
 
+              // Shift coordinate reference from global to local (car) coordinates.
               spl_x[n] = (shift_x * cos(0 - ref_yaw) - shift_y * sin(0 - ref_yaw));
               spl_y[n] = (shift_x * sin(0 - ref_yaw) + shift_y * cos(0 - ref_yaw));
             }
@@ -416,80 +415,137 @@ int main()
 
             vector<double> lanes_to_check = {0};
 
+            // Check which lane the car is in.
             if (lane == 0)
             {
+              // Resize lane vector and push required lanes to check.
               lanes_to_check.resize(1);
               lanes_to_check[0] = (1);
+
+              // Put 1 for out of bound areas.
               costs[1] = (1);
             }
             else if (lane == 1)
             {
+              // Resize lane vector and push required lanes to check.
               lanes_to_check.resize(2);
               lanes_to_check[0] = (0);
               lanes_to_check[1] = (2);
+
+              // Set forward distance higher to get an accurate estimate for the lane cost.
+              forward_distance = 50.0;
             }
             else if (lane == 2)
             {
+              // Resize lane vector and push required lanes to check.
               lanes_to_check.resize(1);
               lanes_to_check[0] = (1);
+
+              // Put 1 for out of bound areas.
               costs[2] = (1);
             }
 
+            // Loop over sensor fusion data.
             for (int n = 0; n < sensor_fusion.size(); n++)
             {
-              
                 float d = sensor_fusion[n][6];
 
+                // Loop over lanes that need to be checked.
                 for (int i = 0; i < lanes_to_check.size(); i++)
                 {
-
+                  bool car_behind = false;
+                  bool car_in_lane = false;
+                  
+                  // Check if other cars are within the boundaries of each desired lane.
                   if (d < (2+4*lanes_to_check[i]+2) && d > (2+4*lanes_to_check[i]-2))
                   {
+                    // Check car s and speed and predict where the car will be for future iterations.
                     double vx = sensor_fusion[n][3];
                     double vy = sensor_fusion[n][4];
                     double other_car_speed = sqrt(vx*vx+vy*vy);
                     double s_to_check = sensor_fusion[n][5];
                     s_to_check += ((double)size_prev*.02*other_car_speed);
                     
-                    //Measures if a car is close in other lane. Forward facing and rear distance are set independently. 
-                    if (s_to_check > car_s && (s_to_check - car_s) <= forward_distance 
-                        || s_to_check < car_s && (car_s - s_to_check) <= rear_distance)
+                    // Measures if a car is within the desired s distance ahead of the ego car.
+                    if (s_to_check > car_s && (s_to_check - car_s) <= forward_distance) 
                     {
-                        if (lanes_to_check.size() == 2)
-                        { 
-                          //costs[i + 1] = ((forward_distance - (s_to_check - car_s)) / forward_distance);
-                          costs[i + 1] = (1);
-                        }
-                        else if (lanes_to_check[i] = 1 && lane == 0)
-                        {
-                          costs[2] = (1);
-                        }
-                        else if (lanes_to_check[i] = 1 && lane == 2)
-                        { 
-                          costs[1] = (1);
-                        }
+                      // Set flag if car is in lane 
+                      car_in_lane = true;
+
+                      // Find lowest S value car in case multiple cars are in range.
+                      if (s_to_check < nearest_s[i])
+                      {
+                        nearest_s[i] = s_to_check;
+                      }
                     }
-                    
+                    // Measures if a car is within the desired s distance behind the ego car.
+                    if (s_to_check <= car_s && (car_s - s_to_check) <= rear_distance)
+                    { 
+                        // Set flag if car behind.
+                        car_behind = true;
+                    }           
                   }
+                  // Check if car behind in possible lane.
+                  if (car_behind)
+                  { 
+                      // Check possible lane.
+                      if (lane == 1)
+                      { 
+                        costs[i + 1] = (1);
+                      }
+                      else if (lane == 0)
+                      {
+                        costs[2] = (1);
+                      }
+                      else if (lane == 2)
+                      { 
+                        costs[1] = (1);
+                      }
+                  }
+                  // Check if car ahead in possible lane.
+                  if (car_in_lane)
+                  { 
+                    // Check possible lane.
+                    if (lane == 1)
+                    { 
+                      // Calculate cost based on where along the detection distance a car is at.
+                      // Far away from ego car = cost closer to 0. Closer to ego car = cost closer to 1.
+                      costs[i + 1] = ((forward_distance - (nearest_s[i] - car_s)) / forward_distance);
+                    }
+                    else if (lane == 0)
+                    {
+                      costs[2] = ((forward_distance - (nearest_s[i] - car_s)) / forward_distance);
+                    }
+                    else if (lane == 2)
+                    { 
+                      costs[1] = ((forward_distance - (nearest_s[i] - car_s)) / forward_distance);
+                    }
+                  }
+
                 } 
             }
 
+            // Loop over sensor fusion data.
+            // Note: Would be more efficient to do this calculation in the above loop but 
+            //is less complicated and more readable as its own loop.
             for (int n = 0; n < sensor_fusion.size(); n++)
             {
-            
               float d = sensor_fusion[n][6];
 
+              // Check if other car in lane ego car is in.
               if (d < (2+4*lane+2) && d > (2+4*lane-2))
-              {
+              { 
+                // Check car s and speed and predict where the car will be for future iterations.
                 double vx = sensor_fusion[n][3];
                 double vy = sensor_fusion[n][4];
                 double other_car_speed = sqrt(vx*vx+vy*vy);
                 double other_car_s = sensor_fusion[n][5];
                 other_car_s += ((double)size_prev*.02*other_car_speed);
 
+                // Check if other car is in range of the same_lane_distance.
                 if (other_car_s > car_s && (other_car_s - car_s) <= same_lane_distance)
                 {
-                  //car_close = true;
+                  // Set current desired speed to be the other car speed (- 0.5 as a buffer).
                   current_desired_speed = ((other_car_speed * 2.2369) - 0.5);
                   s_to_compare = other_car_s;
                 }
@@ -497,62 +553,39 @@ int main()
               }
             }
 
-
+            // Check if ego current speed is greater than the desired speed.
             if (current_speed > current_desired_speed)
             {
               current_speed -= decel_inc;
 
+              // Set a bound so the current speed doesn't go any lower than the desired.
               if (current_speed < current_desired_speed)
               {
                 current_speed = current_desired_speed;
               }
 
+              // Calculate cost from the max speed ego could be going versus how fast it's actually going.
               costs[0] = ((absolute_max_speed - current_speed) / absolute_max_speed);
             }
+            // Check if ego current speed is less than the desired speed.
             else if (current_speed < current_desired_speed)
-            {
-
+            { 
+              // Check if ego is too close to other car to prevent collision.
               if ((s_to_compare - car_s) >= safe_to_accel)
               {
                 current_speed += accel_inc;
               } 
 
+              // Set a bound so the current speed doesn't go any higher than the desired.
               if (current_speed > absolute_max_speed)
               {
                 current_speed = absolute_max_speed;
               }
             }
 
-
-            // if (starting)
-            // {
-            //   costs[0] = 0.0;
-
-            //   if (current_speed > 45)
-            //   { // if (starting)
-            // {
-            //   costs[0] = 0.0;
-
-            //   if (current_speed > 45)
-            //   {
-            //     starting = false;
-            //   }
-            // }
-            // else
-            // {
-            //   costs[0] = ((absolute_max_speed - current_speed) / absolute_max_speed);
-            // }
-            //     starting = false;
-            //   }
-            // }
-            // else
-            // {
-            //   costs[0] = ((absolute_max_speed - current_speed) / absolute_max_speed);
-            // }
-            
-
             int min_pos = 0;
 
+            // Find the index of the costs vector with the lowest value.
             for (int n = 0; n < 3; ++n)
             {
               if (costs[n] < costs[min_pos])
@@ -561,14 +594,15 @@ int main()
               }
             }
 
+            // Set best index to be the minimum cost option.
             best_index = min_pos;
 
-
+            // Check if debug should be output.
             if (debug)
             {
 
-              cout << "Costs" << endl << "Stay: " << costs[0] << endl << "Left Change:  "<< costs[1] << endl \
-                   << "Right Change: " << costs[2] << endl;
+              cout << "Stay: " << costs[0] << endl << "Left Change:  "<< costs[1] << endl \
+              << "Right Change: " << costs[2] << endl;
 
               if (best_index == 0)
               {
@@ -586,73 +620,25 @@ int main()
               cout << endl;
             }
 
-
-            // iteration++;
-
-
-            // Hold for 50 iterations to prevent rapid lane changing.
-            // if (iteration > 50)
-            // {
-            //   if (best_index == 1)
-            //   {
-            //     if ((s_to_compare - car_s) >= safe_to_change)
-            //     {
-            //       lane--;
-            //       iteration = 0;
-            //     }
-            //   }
-            //   else if (best_index == 2)
-            //   {
-            //     if ((s_to_compare - car_s) >= safe_to_change)
-            //     {
-            //       lane++;
-            //       iteration = 0;
-            //     }
-            //   }
-            // }
-
+            // Check if lowest cost option is a lane change.
             if (best_index == 1)
-            {
+            { 
+              // Check if ego is too close to other cars to perform a lane change.
               if ((s_to_compare - car_s) >= safe_to_change)
               {
                 lane--;
-                //iteration = 0;
               }
             }
             else if (best_index == 2)
             {
+              // Check if ego is too close to other cars to perform a lane change.
               if ((s_to_compare - car_s) >= safe_to_change)
               {
                 lane++;
-                //iteration = 0;
               }
             }
 
-
-            // if (current_speed > current_desired_speed)
-            // {
-            //   current_speed -= decel_inc;
-
-            //   if (current_speed < current_desired_speed)
-            //   {
-            //     current_speed = current_desired_speed;
-            //   }
-            // }
-            // else if (current_speed < current_desired_speed)
-            // {
-
-            //   if ((s_to_compare - car_s) >= safe_to_accel)
-            //   {
-            //     current_speed += accel_inc;
-            //   } 
-
-            //   if (current_speed > absolute_max_speed)
-            //   {
-            //     current_speed = absolute_max_speed;
-            //   }
-            // }
-
-
+            // Calculate the amount of points needed and loop that many times.
             for(int i = 1; i <= 50 - previous_path_x.size(); i++)
             {
 
@@ -667,7 +653,7 @@ int main()
               double x_ref = x_point;
               double y_ref = y_point;
 
-              // Change coordinate points back to global perspective after changing them earlier.
+              // Change coordinate points back to global perspective after changing them to local earlier.
               x_point = (x_ref * cos(ref_yaw) - y_ref * sin(ref_yaw));
               y_point = (x_ref * sin(ref_yaw) + y_ref * cos(ref_yaw));
 
