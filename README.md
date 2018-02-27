@@ -1,5 +1,6 @@
 # Path-Planning-Project:
 Self-Driving Car Engineer Nanodegree Program.
+
 Rubric for this project is [Here](https://review.udacity.com/#!/rubrics/1020/view).
 
 ### Basic Build Instructions:
@@ -89,22 +90,44 @@ the path has processed since last time.
 
 ### Project Flow and Details:
 
-- Tunable Paramaters: 
-Lines [267 - 304]:
+- Tunable Paramaters: Lines [267 - 304]:
 
-Debug: Toggle whether or not to output cost and best action data to terminal.
+[270] Debug: Toggle whether or not to output cost and best action data to terminal.
 
-Absolute max speed: The top speed the car can travel at. The specifications for this project say that the car should stay at at or less than 50 mph. 49.5 is a good speed to meet that requirement.
+[273] Absolute max speed: The top speed the car can travel at. The specifications for this project say that the car should stay at at or less than 50 mph. 49.5 is a good speed to meet that requirement.
 
-Costs: A vector of doubles that represents the default cost for staying in your lane, as well as the costs for changing lanes. Index 0 represents the cost of staying in your lane, 1 represents a left change cost, and 2 represents a right change cost. The way my code is currently, it assumes an equal default cost for lane changes. This could be changed in the case of left-passing only laws. Since this is a simulator, I think we should be safe from the virtual police for now. 
+[277] Costs: A vector of doubles that represents the default cost for staying in your lane, as well as the costs for changing lanes. Index 0 represents the cost of staying in your lane, 1 represents a left change cost, and 2 represents a right change cost. The way my code is currently, it assumes an equal default cost for lane changes. This could be changed in the case of left-passing only laws. Since this is a simulator, I think we should be safe from the virtual police for now. 
 
-Forward distance, Rear distance: The range in frenet S ahead and behind of the ego car the lane checking algorithm will detect other cars. The default values are quite small, but in some cases, the forward distance is modified later to search further ahead.
+[280,281] Forward distance, Rear distance: The range in frenet S ahead and behind of the ego car the lane checking algorithm will detect other cars. The default values are quite small, but in some cases, the forward distance is modified later to search further ahead.
 
-Same lane distance: How far ahead in the ego car's lane other cars will be detected. This is used for collision avoidance and general speed control.
+[288] Same lane distance: How far ahead in the ego car's lane other cars will be detected. This is used for collision avoidance and general speed control.
 
-Acceleration and Deceleration increment: Controls how fast the car accelerates or decelerates. My current values were carefully picked to minimize jerk, while still being responsive enough to avoid collision and maintain speed.
+[291,292] Acceleration and Deceleration increment: Controls how fast the car accelerates or decelerates. My current values were carefully picked to minimize jerk, while still being responsive enough to avoid collision and maintain speed.
 
-Spline waypoint distance: This program takes 3 spline samples, and then divides them by 30 points to get a smooth driveable line. This paramater determines how far apart each of those 3 increments are from each other. For example: if this was set to 30, it would take a spline from 0 - 30, 30 - 60, 60 - 90. The result of this paramater is that if it's high, the lines will be smoother and more gradual, and the same for the inverse. 
+Spline waypoint distance: This program creates a spline from 3 incremental waypoints, and then samples the spline for 30 points to get a smooth driveable line. This paramater determines how far apart each of those 3 increments are from each other. For example: if this paramater was set to 30, it would fit a spline from origin - 30, origin - 60, origin - 90. The result of this paramater is that if it's high, the lines will be smoother and more gradual. The inverse is also true. If the waypoints are closer together, the spline will have sharper curves. I set my value to 32, as this provides a nice smooth line that is quick enough for lane changing, while also staying within my jerk limit.  
+
+Safe to accelerate: Prevents the ego car from accelerating if that acceleration would likely result in a collision with another car.
+
+Safe to change: Prevents the ego car from changing lanes if the lane change would result in a collision with another car. This was introduced due to the way my speed cost is calculated. If another car was quickly decelerating in front of the ego car, causing ego to decelerate, that cost could outweight the cost of changing lanes. This would cause the ego car to lane change and clip the back side of the car in front of it. This makes sure the ego car slows down first-- or is at an acceptable distance, before attempting a lane change. 
+
+---
+
+- Spline Function: Lines [319 - 414] & [642 - 668]:
+
+[332 - 361] Use either the car as the reference point or the previous paths end point as the reference to start or continue creating a spline. This uses the previous points if they're avaliable to create a nice smooth transition. 
+
+[365 - 376] Incrementally project out points in the distance chosen by `spline_waypoint_distance` and push them onto our vector of spline points. This gives us a smooth line that we can take 30 points from to pass to the simulator. This is a summarized version of what was discussed above in Spline waypoint distance. 
+
+[380 - 388] Go through each point in the spline vector and shift the coordinate reference from global to local perspective. This makes the points easier to calculate as they now are now at the origin. 
+
+[391 - 394] Inititalize spline function and pass the prepared point vectors to it. 
+
+[397 - 407] initialize variables `next_x_vals` & `next_y_vals` to store the x and y values passed to the simulator and use previous points from the last iteration so we don't recalculate points. 
+
+
+
+
+
 
 
 
