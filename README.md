@@ -132,14 +132,19 @@ the path has processed since last time.
 
 ---
 
-Defining Lane Checking: Lines [417 - 447]:
+- Defining Lane Checking: Lines [417 - 447]:
 
 This section of code checks which lane the ego car is in and maps out which lanes the algorithm can observe to see if there is a lower cost option available for the ego car. 1s are set for lanes that have an out of bounds area adjacent to them. The center lane or lane 1 has `forward_distance` set to 50 currently so that the cost function can choose a better fitting lane when it has 2 choices. `lanes_to_check` is a vector that represents which lanes should be checked when the ego car is in a specified lane. Lane 0 = Should check lane 1. Lane 1 = should check lane 0 and 2, Lane 2 = should check lane 1. This doesn't scale very well, but the solution is good enough for the problem. 
 
 ---
 
-Checking If Cars Are In Other Lanes: Lines [450 - 527]:
+- Checking If Cars Are In Other Lanes: Lines [450 - 527]:
 
+Loops through the sensor fusion data and extracts the d value to be used to check which lane the car is in. If the d value is in the lane that is being checked `if (d < (2+4*lanes_to_check[i]+2) && d > (2+4*lanes_to_check[i]-2))` then it will take that cars s for location and vx,vy for determining how fast the car is going. Since we are using previous path points, we need to update the cars s to get a better estimate `s_to_check += ((double)size_prev*.02*other_car_speed)`. The cars s is then checked to see if the car in the lane is within the `forward_distance` or `rear_distance` of the ego car and sets flags if so. These flags are then evaluated in [490 - 524]. If there is a car behind, it checks which lane it's in and sets a cost of 1 in the cost vector for switching to that lane. If there is a car in the lane ahead, it will check the lane, and then calculate the cost based on how far along the detection distance that car is `((forward_distance - (nearest_s[i] - car_s)) / forward_distance)`. This will ensure that lane changes are both safe and beneficial to navigational efficiency. 
+
+---
+
+- Checking If Cars Are In The Same Lane: [532 - 555]
 
 
 
