@@ -144,7 +144,29 @@ Loops through the sensor fusion data and extracts the d value to be used to chec
 
 ---
 
-- Checking If Cars Are In The Same Lane: [532 - 555]
+- Checking If Cars Are In The Same Lane: Lines [532 - 555]:
+
+This is mostly the same as checking other lanes. As mentioned in my code comments, I could have added this to the code to check other lanes, but I think it's more readable on its own. The difference here is that I check the distance ahead in the ego car lane using `same_lane_distance` to compare. I also use the car speed to determine how fast the ego car should go if within the range `current_desired_speed = ((other_car_speed * 2.2369) - 0.5)`. The value is multiplied by 2.2369 to convert from m/s to mph. The - 0.5 is just as a buffer due to latency.  I also store the S value of the in-range car to use for later on in the program. `s_to_compare = other_car_s`.  
+
+---
+
+- Determining How Fast To Go: Lines [558 - 585]:
+
+[558 - 570] Checks if the current ego speed is greater than the desired set by the car in lane detection. This way the car only slows down if something is impeding it. 
+
+[563 - 566] Bound the current speed to be the desired speed. 
+
+[569] Calculates the cost of going slow. This is calculated by comparing the max speed it could go versus how fast it's currently going. `costs[0] = ((absolute_max_speed - current_speed) / absolute_max_speed)` 
+
+[572 - 585] Checks if current speed is less than the desired speed. Will either be 50 mph or the speed of another car in front of it. 
+
+[575 - 578] Checks if the ego car is too close to another car to perform safe acceleration. This logic rarely happens but is included for robustness. 
+
+[581 - 584] Bound the current speed to be the max speed so it doesn't go higher.
+
+---
+
+- Find Lowest Cost Option: Lines [590 - 596]:
 
 
 
