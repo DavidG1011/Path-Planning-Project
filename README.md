@@ -88,7 +88,26 @@ the path has processed since last time.
 
 ---
 
-### Project Flow and Explanation:
+### General Project Flow:
+
+- Receive input from simulator.
+- Declare paramaters.
+- Calculate 3 waypoint spline.
+- Calculate which lanes need to be checked.
+- Check lanes and determine which cars are in range of interest.
+- Calculate the cost for in-range cars.
+- Check ego lane and determine if cars are close. If close, set desired speed to speed of other car.
+- Determine ego speed. Will either be 50mph or the speed of an impeding car.
+- Calculate cost from ego speed.
+- Determine lowest cost.
+- If lane change is lowest cost, determine if safe and execute.
+- If stay in lane is lowest cost, execute at desired speed set by same lane check. 
+- Divide spline into appropriate distancing for desired speed.
+- Send x and y points to the simulator to execute.
+
+---
+
+### Detailed Project Flow and Explanation:
 
 - Tunable Paramaters: Lines [267 - 304]:
 
@@ -134,19 +153,19 @@ the path has processed since last time.
 
 - Defining Lane Checking: Lines [417 - 447]:
 
-This section of code checks which lane the ego car is in and maps out which lanes the algorithm can observe to see if there is a lower cost option available for the ego car. 1s are set for lanes that have an out of bounds area adjacent to them. The center lane or lane 1 has `forward_distance` set to 50 currently so that the cost function can choose a better fitting lane when it has 2 choices. `lanes_to_check` is a vector that represents which lanes should be checked when the ego car is in a specified lane. Lane 0 = Should check lane 1. Lane 1 = should check lane 0 and 2, Lane 2 = should check lane 1. This doesn't scale very well, but the solution is good enough for the problem. 
+This section of code checks which lane the ego car is in and maps out which lanes the algorithm can observe to see if there is a lower cost option available for the ego car. 1s are set for lanes that have an out of bounds area adjacent to them. The center lane or lane 1 has `forward_distance` set to 50 currently so that the cost function can choose a better fitting lane when it has 2 choices. `lanes_to_check` is a vector that represents which lanes should be checked when the ego car is in a specified lane. Lane 0 = Should check lane 1. Lane 1 = should check lane 0 and 2, Lane 2 = should check lane 1. This doesn't scale very well, but the solution fits the current problem set well enough. 
 
 ---
 
 - Checking If Cars Are In Other Lanes: Lines [450 - 527]:
 
-Loops through the sensor fusion data and extracts the d value to be used to check which lane the car is in. If the d value is in the lane that is being checked `if (d < (2+4*lanes_to_check[i]+2) && d > (2+4*lanes_to_check[i]-2))` then it will take that cars s for location and vx,vy for determining how fast the car is going. Since we are using previous path points, we need to update the cars s to get a better estimate `s_to_check += ((double)size_prev*.02*other_car_speed)`. The cars s is then checked to see if the car in the lane is within the `forward_distance` or `rear_distance` of the ego car and sets flags if so. These flags are then evaluated in [490 - 524]. If there is a car behind, it checks which lane it's in and sets a cost of 1 in the cost vector for switching to that lane. If there is a car in the lane ahead, it will check the lane, and then calculate the cost based on how far along the detection distance that car is `((forward_distance - (nearest_s[i] - car_s)) / forward_distance)`. This will ensure that lane changes are both safe and beneficial to navigational efficiency. 
+Loops through the sensor fusion data and extracts the d value to check which lane the car is in. If the d value is in the lane that is being checked `if (d < (2+4*lanes_to_check[i]+2) && d > (2+4*lanes_to_check[i]-2))` then it will take that cars s for location and vx,vy for determining how fast the car is going. Since we are using previous path points, we need to update the car's s value `s_to_check += ((double)size_prev*.02*other_car_speed)`. The car's s is then checked to see if the car in the lane is within the `forward_distance` or `rear_distance` of the ego car and sets flags if so. These flags are then evaluated in [490 - 524]. If there is a car behind, it checks which lane it's in and sets a cost of 1 in the cost vector for switching to that lane. If there is a car in the lane ahead, it will check the lane, and then calculate the cost based on how far along the detection distance that car is `((forward_distance - (nearest_s[i] - car_s)) / forward_distance)`. This will ensure that lane changes are both safe and beneficial to navigational efficiency. 
 
 ---
 
 - Checking If Cars Are In The Same Lane: Lines [532 - 555]:
 
-This is mostly the same as checking other lanes. As mentioned in my code comments, I could have added this to the code to check other lanes, but I think it's more readable on its own. The difference here is that I check the distance ahead in the ego car lane using `same_lane_distance` to compare. I also use the car speed to determine how fast the ego car should go if within the range `current_desired_speed = ((other_car_speed * 2.2369) - 0.5)`. The value is multiplied by 2.2369 to convert from m/s to mph. The - 0.5 is just as a buffer due to latency.  I also store the S value of the in-range car to use for later on in the program. `s_to_compare = other_car_s`.  
+This is mostly the same as checking other lanes. As mentioned in my code comments, I could have added this to the code to check other lanes, but I think it's more readable on its own. The difference here is that I check the distance ahead in the ego car lane using `same_lane_distance` to compare. I also use the car speed to determine how fast the ego car should go if within the range `current_desired_speed = ((other_car_speed * 2.2369) - 0.5)`. The value is multiplied by 2.2369 to convert from m/s to mph. The - 0.5 is just as a buffer due to latency.  I also store the s value of the in-range car to use for later on in the program. `s_to_compare = other_car_s`.  
 
 ---
 
