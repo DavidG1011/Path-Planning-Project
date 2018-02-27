@@ -98,11 +98,11 @@ the path has processed since last time.
 
 [277] Costs: A vector of doubles that represents the default cost for staying in your lane, as well as the costs for changing lanes. Index 0 represents the cost of staying in your lane, 1 represents a left change cost, and 2 represents a right change cost. The way my code is currently, it assumes an equal default cost for lane changes. This could be changed in the case of left-passing only laws. Since this is a simulator, I think we should be safe from the virtual police for now. 
 
-[280,281] Forward distance, Rear distance: The range in frenet S ahead and behind of the ego car the lane checking algorithm will detect other cars. The default values are quite small, but in some cases, the forward distance is modified later to search further ahead.
+[280 - 281] Forward distance, Rear distance: The range in frenet S ahead and behind of the ego car the lane checking algorithm will detect other cars. The default values are quite small, but in some cases, the forward distance is modified later to search further ahead.
 
 [288] Same lane distance: How far ahead in the ego car's lane other cars will be detected. This is used for collision avoidance and general speed control.
 
-[291,292] Acceleration and Deceleration increment: Controls how fast the car accelerates or decelerates. My current values were carefully picked to minimize jerk, while still being responsive enough to avoid collision and maintain speed.
+[291 - 292] Acceleration and Deceleration increment: Controls how fast the car accelerates or decelerates. My current values were carefully picked to minimize jerk, while still being responsive enough to avoid collision and maintain speed.
 
 [295] Spline waypoint distance: This program creates a spline from 3 incremental waypoints, and then samples the spline for 30 points to get a smooth driveable line. This paramater determines how far apart each of those 3 increments are from each other. For example: if this paramater was set to 30, it would fit a spline from origin - 30, origin - 60, origin - 90. The result of this paramater is that if it's high, the lines will be smoother and more gradual. The inverse is also true. If the waypoints are closer together, the spline will have sharper curves. I set my value to 32, as this provides a nice smooth line that is quick enough for lane changing, while also staying within my jerk limit.  
 
