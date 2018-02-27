@@ -88,7 +88,26 @@ the path has processed since last time.
 
 ---
 
-### Project Flow and Explanation:
+### General Project Flow:
+
+- Receive input from simulator.
+- Declare paramaters.
+- Calculate 3 waypoint spline.
+- Calculate which lanes need to be checked.
+- Check lanes and determine which cars are in range of interest.
+- Calculate the cost for in-range cars.
+- Check ego lane and determine if cars are close. If close, set desired speed to speed of other car.
+- Determine ego speed. Will either be 50mph or the speed of an impeding car.
+- Calculate cost from ego speed.
+- Determine lowest cost.
+- If lane change is lowest cost, determine if safe and execute.
+- If stay in lane is lowest cost, execute at desired speed set by same lane check. 
+- Divide spline into appropriate distancing for desired speed.
+- Send x and y points to the simulator to execute.
+
+---
+
+### Detailed Project Flow and Explanation:
 
 - Tunable Paramaters: Lines [267 - 304]:
 
