@@ -88,7 +88,7 @@ the path has processed since last time.
 
 ---
 
-### Project Flow and Details:
+### Project Flow and Explanation:
 
 - Tunable Paramaters: Lines [267 - 304]:
 
