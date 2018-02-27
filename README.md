@@ -168,24 +168,16 @@ This is mostly the same as checking other lanes. As mentioned in my code comment
 
 - Find Lowest Cost Option: Lines [590 - 596]:
 
+Finds the index of the cost vector with the lowest value. Lowest value = action with cheapest cost. Worth mentioning: Since the default lane change cost is currently the same for both left and right lane changes, the logic of this function will choose the left lane if both are at their default value.
 
+---
 
+- Debug Output: Lines [602 - 622]:
 
+Ouputs the costs for staying in your lane, changing lanes left, and changing lanes right. This will also output the action chosen to execute, but may be hard to see due to how fast this outputs to the console. 
 
+---
 
+- Check Lane Change: Lines [625 - 640]:
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Checks if the lowest costs option is a lane change and increments or decrements the lane variable appropriately. Before it can change lanes, it has to check if it's too close to another car. This is just a summarized version of what was mentioned in the tunable paramaters section.
