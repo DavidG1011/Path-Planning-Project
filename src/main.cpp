@@ -304,6 +304,13 @@ int main()
 
             //##################################################################################################################
 
+            // References:
+            //**************************************************************************************
+            // Spline function processing and some lane checking code referenced from the 
+            // Project walk through Q&A: https://www.youtube.com/watch?v=7sI3VHFPP0w
+            //**************************************************************************************
+
+
             // Initialize current desired speed to the max desired. 
             double current_desired_speed = absolute_max_speed;
 
