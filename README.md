@@ -104,11 +104,11 @@ the path has processed since last time.
 
 [291,292] Acceleration and Deceleration increment: Controls how fast the car accelerates or decelerates. My current values were carefully picked to minimize jerk, while still being responsive enough to avoid collision and maintain speed.
 
-Spline waypoint distance: This program creates a spline from 3 incremental waypoints, and then samples the spline for 30 points to get a smooth driveable line. This paramater determines how far apart each of those 3 increments are from each other. For example: if this paramater was set to 30, it would fit a spline from origin - 30, origin - 60, origin - 90. The result of this paramater is that if it's high, the lines will be smoother and more gradual. The inverse is also true. If the waypoints are closer together, the spline will have sharper curves. I set my value to 32, as this provides a nice smooth line that is quick enough for lane changing, while also staying within my jerk limit.  
+[295] Spline waypoint distance: This program creates a spline from 3 incremental waypoints, and then samples the spline for 30 points to get a smooth driveable line. This paramater determines how far apart each of those 3 increments are from each other. For example: if this paramater was set to 30, it would fit a spline from origin - 30, origin - 60, origin - 90. The result of this paramater is that if it's high, the lines will be smoother and more gradual. The inverse is also true. If the waypoints are closer together, the spline will have sharper curves. I set my value to 32, as this provides a nice smooth line that is quick enough for lane changing, while also staying within my jerk limit.  
 
-Safe to accelerate: Prevents the ego car from accelerating if that acceleration would likely result in a collision with another car.
+[299] Safe to accelerate: Prevents the ego car from accelerating if that acceleration would likely result in a collision with another car.
 
-Safe to change: Prevents the ego car from changing lanes if the lane change would result in a collision with another car. This was introduced due to the way my speed cost is calculated. If another car was quickly decelerating in front of the ego car, causing ego to decelerate, that cost could outweight the cost of changing lanes. This would cause the ego car to lane change and clip the back side of the car in front of it. This makes sure the ego car slows down first-- or is at an acceptable distance, before attempting a lane change. 
+[303] Safe to change: Prevents the ego car from changing lanes if the lane change would result in a collision with another car. This was introduced due to the way my speed cost is calculated. If another car was quickly decelerating in front of the ego car, causing ego to decelerate, that cost could outweight the cost of changing lanes. This would cause the ego car to lane change and clip the back side of the car in front of it. This makes sure the ego car slows down first-- or is at an acceptable distance, before attempting a lane change. 
 
 ---
 
@@ -122,7 +122,30 @@ Safe to change: Prevents the ego car from changing lanes if the lane change woul
 
 [391 - 394] Inititalize spline function and pass the prepared point vectors to it. 
 
-[397 - 407] initialize variables `next_x_vals` & `next_y_vals` to store the x and y values passed to the simulator and use previous points from the last iteration so we don't recalculate points. 
+[397 - 407] Initialize variables `next_x_vals` & `next_y_vals` to store the x and y values passed to the simulator. Loop over and use previous points from the last iteration so we don't recalculate points.
+
+[411 - 414] Assign `waypoint_x = 30` for 30 meters and pass to spline function to get y value for it. Calculate magnitude from x and y value. 
+
+[643] Loop up to 50 times and push points onto the `next_x_vals` & `next_y_vals` vectors. This loop accounts for previous points we have created so we don't recalculate them. 
+
+[647 - 667] Calculate the distance each waypoint needs to be at to travel the desired speed. Change the reference point back to global perspective so the points can be passed to the simulator. `N = (waypoint_dist/(.02*current_speed/2.2369))` This first multiplies the current desired speed by .02 since the simulator runs 50 times per second. Then, it divides the product of that by 2.2369 to convert it from mph to m/s. Finally, it divides waypoint distance by the quotient of that. N is then used to split up our line into evenly spaced points `x_point = x_add_on+(waypoint_x)/N` so the car travels at our desired speed. 
+
+---
+
+Defining Lane Checking: Lines [417 - 447]:
+
+This section of code checks which lane the ego car is in and maps out which lanes the algorithm can observe to see if there is a lower cost option available for the ego car. 1s are set for lanes that have an out of bounds area adjacent to them. The center lane or lane 1 has `forward_distance` set to 50 currently so that the cost function can choose a better fitting lane when it has 2 choices. `lanes_to_check` is a vector that represents which lanes should be checked when the ego car is in a specified lane. Lane 0 = Should check lane 1. Lane 1 = should check lane 0 and 2, Lane 2 = should check lane 1. This doesn't scale very well, but the solution is good enough for the problem. 
+
+---
+
+Checking If Cars Are In Other Lanes: Lines [450 - 527]:
+
+
+
+
+
+
+
 
 
 
