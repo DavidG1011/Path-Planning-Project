@@ -248,6 +248,7 @@ int main()
             double end_path_s = j[1]["end_path_s"];
             double end_path_d = j[1]["end_path_d"];
 
+
             // Store size of previous path. (Assumes x size == y size)
             int size_prev = previous_path_x.size();
 
@@ -271,6 +272,7 @@ int main()
             // Max speed car can travel at.
             double absolute_max_speed = 49.5;
 
+            // Stores default costs for staying in lane and switching to left or right lane.
             // Assumes equal default cost for lane changes. Could be changed to favor left passing for legality sake.
             vector<double> costs = {0,0.12,0.12};
 
@@ -307,7 +309,6 @@ int main()
 
             int best_index;
 
-            bool speed_up = true;
             bool car_close = false;
 
             // Initialize min function variables to highest possible.
@@ -406,7 +407,7 @@ int main()
             }
 
 
-            // Calculate 30 meter way-points to use for moving at desired speed
+            // Calculate 30 meter way-point to use for moving at desired speed
             double waypoint_x = 30;
             double waypoint_y = spl(waypoint_x);
             double waypoint_dist = sqrt((waypoint_x) * (waypoint_x) + (waypoint_y) * (waypoint_y));
@@ -600,7 +601,7 @@ int main()
             // Check if debug should be output.
             if (debug)
             {
-
+              // Output costs for each index. 
               cout << "Stay: " << costs[0] << endl << "Left Change:  "<< costs[1] << endl \
               << "Right Change: " << costs[2] << endl;
 
@@ -660,7 +661,7 @@ int main()
               x_point += ref_x;
               y_point += ref_y;
 
-              // Push back final x,y values to the simulation. 
+              // Push back final x,y values to the simulator. 
               next_x_vals.push_back(x_point);
               next_y_vals.push_back(y_point);
 
