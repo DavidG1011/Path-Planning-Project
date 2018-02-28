@@ -278,29 +278,36 @@ int main()
 
             // Car ahead and behind detection distance for other lanes.
             double forward_distance = 22.0;
-            double rear_distance = 8.0;
+            // double rear_distance = 8.0;
+            double rear_distance = 15.0;
 
             //*******************************************************
             //**  Make sure forward_distance > same_lane_distance. **
             //*******************************************************
 
             // Car in same lane detection distance.
+            //double same_lane_distance = 18.0;
             double same_lane_distance = 18.0;
 
             // Control how fast the ego car accelerates/decelerates.
-            double accel_inc = 0.35;
-            double decel_inc = 1.0;
+            //double accel_inc = 0.35;
+            double accel_inc = 0.30;
+            //double decel_inc = 1.0;
+            double decel_inc = 0.95;
 
             // Set how far apart way-points are for the spline function. Higher = smoother lines.
-            double spl_waypoint_distance = 32.0;
+            // double spl_waypoint_distance = 32.0;
+            double spl_waypoint_distance = 34.0;
 
             // Prevents ego car from accelerating if the acceleration would hit another car. 
             // Distance to car greater than this value = safe.
-            double safe_to_accel = 13;
+            // double safe_to_accel = 13;
+            double safe_to_accel = 14;
 
             // Prevents ego car from clipping other cars during lane changing. 
             // Distance to car greater than this value = safe.
-            double safe_to_change = 14;
+            // double safe_to_change = 14;
+            double safe_to_change = 15;
 
             //##################################################################################################################
 
@@ -511,7 +518,7 @@ int main()
                       }
                   }
                   // Check if car ahead in possible lane.
-                  if (car_in_lane)
+                  else if (car_in_lane)
                   { 
                     // Check possible lane.
                     if (lane == 1)
